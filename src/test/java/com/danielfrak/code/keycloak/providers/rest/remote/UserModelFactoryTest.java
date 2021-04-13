@@ -222,8 +222,9 @@ class UserModelFactoryTest {
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
         when(realm.getGroups()).thenReturn(Collections.emptyList());
-        when(realm.createGroup("newGroup")).thenReturn(newGroupModel);
-        when(realm.createGroup("anotherGroup")).thenReturn(anotherGroupModel);
+        GroupModel parentGroup = null;
+        when(realm.createGroup("newGroup", parentGroup)).thenReturn(newGroupModel);
+        when(realm.createGroup("anotherGroup", parentGroup)).thenReturn(anotherGroupModel);
 
         LegacyUser legacyUser = createLegacyUser(username);
         legacyUser.setGroups(List.of("newGroup", "anotherGroup"));

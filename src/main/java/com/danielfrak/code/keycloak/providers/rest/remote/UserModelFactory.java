@@ -4,10 +4,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -153,15 +150,33 @@ public class UserModelFactory {
         Optional<GroupModel> group = realm.getGroups().stream()
                 .filter(g -> effectiveGroupName.equalsIgnoreCase(g.getName())).findFirst();
 
+        if (group.isEmpty()) {
+            for (GroupModel mainGroup: realm.getGroups()) {
+                for(GroupModel subGroup : mainGroup.getSubGroups()) {
+                    String nestedGroupName= mainGroup.getName()+ "/" + subGroup.getName();
+                    if (effectiveGroupName.equalsIgnoreCase(nestedGroupName)) {
+                        return Optional.of(subGroup);
+                    }
+                }
+            }
+        }
+
         GroupModel realmGroup = group
                 .map(g -> {
                     LOG.infof("Found existing group %s with id %s", g.getName(), g.getId());
                     return g;
                 })
                 .orElseGet(() -> {
-                    GroupModel newGroup = realm.createGroup(effectiveGroupName);
-                    LOG.infof("Created group %s with id %s", newGroup.getName(), newGroup.getId());
-                    return newGroup;
+                    List<String> groupHierarchy = Arrays.asList(effectiveGroupName.split("/"));
+
+                    GroupModel parent = null;
+
+                    for (String subgroupName : groupHierarchy) {
+                        parent = realm.createGroup(subgroupName, parent);
+                        LOG.infof("Created group %s with id %s", parent.getName(), parent.getId());
+                    }
+
+                    return parent;
                 });
 
         return Optional.of(realmGroup);
